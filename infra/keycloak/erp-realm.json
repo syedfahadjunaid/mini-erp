@@ -1,0 +1,263 @@
+{
+  "realm": "erp",
+  "displayName": "Mini ERP (local development)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "permanentLockout": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "revokeRefreshToken": false,
+  "passwordPolicy": "length(12) and notUsername and notEmail",
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Master data: products, warehouses and bins, suppliers, customers"
+      },
+      {
+        "name": "PURCHASING",
+        "description": "Raises, edits, submits and cancels purchase orders"
+      },
+      {
+        "name": "MANAGER",
+        "description": "Approves purchase orders (not their own), adjusts stock, sets reorder points"
+      },
+      {
+        "name": "WAREHOUSE",
+        "description": "Receives goods, ships orders, transfers stock between warehouses"
+      },
+      {
+        "name": "SALES",
+        "description": "Takes, confirms and cancels sales orders"
+      },
+      {
+        "name": "FINANCE",
+        "description": "Issues invoices and runs financial reports"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "erp-web",
+      "name": "Mini ERP web app (the API is its own backend-for-frontend; confidential client, code + PKCE)",
+      "description": "The browser only gets an HttpOnly session cookie; tokens stay in the API's server-side session. The secret comes from KEYCLOAK_CLIENT_SECRET in .env when the realm is imported.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5780/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5780/"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles as 'roles'",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "erp-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "erp-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "erp-cli",
+      "name": "LOCAL DEV ONLY - password grant for the demo scripts and Swagger UI. Never enable in production.",
+      "description": "Public client with direct access grants, so scripts can sign in demo users. A web front end would get its own confidential client (code flow + PKCE).",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "realm roles as 'roles'",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "erp-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "erp-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "adam",
+      "enabled": true,
+      "email": "adam@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Adam",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    },
+    {
+      "username": "pam",
+      "enabled": true,
+      "email": "pam@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Pam",
+      "lastName": "Purchasing",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PURCHASING"
+      ]
+    },
+    {
+      "username": "max",
+      "enabled": true,
+      "email": "max@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Max",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "MANAGER"
+      ]
+    },
+    {
+      "username": "bea",
+      "enabled": true,
+      "email": "bea@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Bea",
+      "lastName": "Buying-Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "PURCHASING",
+        "MANAGER"
+      ]
+    },
+    {
+      "username": "walt",
+      "enabled": true,
+      "email": "walt@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Walt",
+      "lastName": "Warehouse",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "WAREHOUSE"
+      ]
+    },
+    {
+      "username": "sue",
+      "enabled": true,
+      "email": "sue@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Sue",
+      "lastName": "Sales",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "SALES"
+      ]
+    },
+    {
+      "username": "finn",
+      "enabled": true,
+      "email": "finn@mini-erp.test",
+      "emailVerified": true,
+      "firstName": "Finn",
+      "lastName": "Finance",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "FINANCE"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: erp-api
+  config:
+    # Lets you run the app from your IDE with the same .env file Docker Compose uses.
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../../.env[.properties]
+  threads:
+    virtual:
+      enabled: true          # Java 21+ virtual threads: cheap blocking I/O per request and per event listener
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:${POSTGRES_HOST_PORT:37432}/erp?currentSchema=erp}
+    # The application's own login: data access only, no DDL (see infra/postgres/init).
+    username: ${DB_APP_USERNAME:erp_app}
+    password: ${DB_APP_PASSWORD:}
+    hikari:
+      maximum-pool-size: 20
+  flyway:
+    # Migrations run as the schema owner, a different login from the one the app uses.
+    user: ${DB_OWNER_USERNAME:erp_owner}
+    password: ${DB_OWNER_PASSWORD:}
+    schemas: erp
+    default-schema: erp
+    placeholders:
+      appRole: ${DB_APP_USERNAME:erp_app}
+  jpa:
+    open-in-view: false      # no lazy loading from controllers; services return DTOs
+    hibernate:
+      ddl-auto: validate     # Flyway owns the schema; Hibernate only checks the entities match it
+    properties:
+      hibernate:
+        default_schema: erp
+  mvc:
+    problemdetails:
+      enabled: true          # RFC 9457 error bodies
+  session:
+    timeout: 30m             # browser sessions (like Keycloak's SSO idle timeout)
+    jdbc:
+      initialize-schema: never   # the tables come from Flyway (V6__browser_sessions.sql)
+      table-name: erp.spring_session
+  modulith:
+    events:
+      # Event publications that were stored but never completed (the app stopped mid-way) are
+      # delivered again on startup. Failed ones are retried by EventPublicationMaintenance.
+      republish-outstanding-events-on-restart: true
+      jdbc:
+        schema-initialization:
+          enabled: false     # the event_publication table comes from Flyway (V5)
+
+server:
+  port: 8080
+  # Redirects such as "go to / after sign-in" stay relative, so they work behind nginx.
+  tomcat:
+    use-relative-redirects: true
+  servlet:
+    session:
+      cookie:
+        # Not the default "SESSION": cookies on localhost are shared across ports, so other
+        # local apps could collide with a generic name.
+        name: ERP_SESSION
+        http-only: true      # JavaScript can't read it, so an XSS bug can't steal the session
+        # Lax, not Strict: the cookie must come along when Keycloak redirects the browser back.
+        same-site: lax
+        secure: ${COOKIE_SECURE:false}   # set true wherever the app is served over HTTPS
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  server:
+    port: 8081               # health and metrics on a separate port that is never published
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+erp:
+  # Where people reach the web app (nginx). The sign-in redirect URI is built from it.
+  public-url: ${PUBLIC_URL:http://localhost:5780}
+  # The company's time zone: decides invoice dates and so which fiscal year an invoice belongs to.
+  business-time-zone: ${ERP_TIME_ZONE:UTC}
+  keycloak:
+    # Tokens say iss=http://localhost:8880/realms/erp (the address scripts and browsers use);
+    # inside Docker this service reaches the same realm as keycloak:8080.
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8880/realms/erp}
+    backchannel-uri: ${KEYCLOAK_BACKCHANNEL_URI:http://localhost:8880/realms/erp}
+    # Bearer tokens (scripts, Swagger UI) must be issued for this audience.
+    audience: erp-api
+    # Browser sign-in: the confidential client "erp-web"
+    client-id: erp-web
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+  invoicing:
+    auto-issue: ${ERP_AUTO_INVOICE:true}
+  events:
+    resubmit-failed-after: 30s
+    keep-completed-for: 7d
+  scheduling:
+    enabled: true
+  company:
+    name: Mini ERP Demo Trading Ltd.
+    address: "1 Example Street\n1000 AB Sampletown\nNL"
+    tax-id: NL000000000B01

@@ -1,0 +1,14 @@
+# Settings for the integration tests (activated by @ActiveProfiles("test") on IntegrationTest).
+erp:
+  scheduling:
+    enabled: false          # tests run background jobs by hand, when they choose
+  # A zone far from UTC, so tests notice if a date is taken in UTC by mistake
+  # (and the year-boundary test can show an invoice dated next year).
+  business-time-zone: Pacific/Auckland
+  keycloak:
+    issuer-uri: http://localhost:8880/realms/erp
+    backchannel-uri: http://localhost:1/unused   # tests trust a local key instead (TestTokens)
+    client-secret: test-client-secret
+logging:
+  level:
+    "[org.springframework.modulith]": WARN
